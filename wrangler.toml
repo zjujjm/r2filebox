@@ -1,0 +1,83 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+
+name = "r2filebox"
+main = "worker/src/index.ts"
+compatibility_date = "2026-07-20"
+compatibility_flags = ["nodejs_compat"]
+
+[placement]
+mode = "smart"
+
+workers_dev = true
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = [
+  "/api/*",
+  "/admin/*",
+  "/health"
+]
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "r2filebox-files"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "r2filebox-db"
+database_id = "c7b45a50-8b62-4e6e-b1cf-dc80afb7ab14"
+migrations_dir = "worker/migrations"
+
+[[ratelimits]]
+name = "UPLOAD_RATE_LIMITER"
+namespace_id = "2316401001"
+simple = { limit = 600, period = 60 }
+
+[[ratelimits]]
+name = "UPLOAD_PART_RATE_LIMITER"
+namespace_id = "2316401002"
+simple = { limit = 2000, period = 60 }
+
+[[ratelimits]]
+name = "RESOLVE_RATE_LIMITER"
+namespace_id = "2316401003"
+simple = { limit = 2000, period = 60 }
+
+[[ratelimits]]
+name = "DOWNLOAD_RATE_LIMITER"
+namespace_id = "2316401004"
+simple = { limit = 2000, period = 60 }
+
+[triggers]
+# Hourly, not daily: one invocation drains a bounded number of batches, so the
+# reclaim rate has to stay ahead of the share creation rate or expired objects
+# accumulate in R2 and keep occupying the storage soft limit.
+crons = [
+  "0 * * * *"
+]
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "r2filebox_metrics"
+
+# Keep every invocation: at personal volume the Workers Logs allowance is far
+# away, while sampling at 10% silently dropped nine in ten console.error lines.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+[version_metadata]
+binding = "VERSION_METADATA"
+
+[vars]
+APP_VERSION = "2.9.0"
+
+R2_BUCKET_NAME = "r2filebox-files"
+D1_DATABASE_NAME = "r2filebox-db"
